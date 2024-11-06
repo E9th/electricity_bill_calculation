@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>โปรแกรมควบคุม Arduino</title>
     <style>
-        /* เพิ่มเติมการตกแต่ง */
+        /* Mobile-Friendly Styling */
         body, html {
             margin: 0;
             padding: 0;
@@ -20,6 +20,7 @@
             background-position: center;
             color: white;
         }
+
         .container {
             background: rgba(0, 0, 0, 0.6);
             padding: 20px;
@@ -28,22 +29,20 @@
             max-width: 400px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
+
         h1 {
             font-size: 1.5rem;
             margin-bottom: 20px;
             color: #FFD700;
         }
+
         .form-group {
             display: flex;
             align-items: center;
             margin-bottom: 15px;
             gap: 10px;
         }
-        label {
-            font-size: 1rem;
-            margin-bottom: 5px;
-            display: block;
-        }
+
         input[type="text"] {
             flex: 1;
             padding: 10px;
@@ -52,6 +51,7 @@
             outline: none;
             font-size: 1rem;
         }
+
         button {
             padding: 10px 20px;
             font-size: 1rem;
@@ -62,27 +62,39 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
+
         button:hover {
             background-color: #FF1493;
         }
+        
         .start-button {
             margin-top: 20px;
             width: 100%;
+        }
+
+        .status-text {
+            margin-top: 15px;
+            font-size: 1rem;
+            color: #FFD700;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>โปรแกรมควบคุม Arduino</h1>
+
         <div class="form-group">
             <input type="text" id="loop-count" placeholder="ระบุจำนวนรอบ..">
             <button id="confirm-loop-count">ยืนยัน</button>
         </div>
+
         <div class="form-group">
             <input type="text" id="loop-interval" placeholder="ระบุเวลาต่อรอบ..">
             <button id="confirm-loop-interval">ยืนยัน</button>
         </div>
+
         <button id="start-button" class="start-button" disabled>เริ่มการทำงาน</button>
+        <div id="status-text" class="status-text"></div>
     </div>
 
     <script>
@@ -91,56 +103,100 @@
         const startButton = document.getElementById('start-button');
         const confirmLoopCountButton = document.getElementById('confirm-loop-count');
         const confirmLoopIntervalButton = document.getElementById('confirm-loop-interval');
-        const ws = new WebSocket('ws://your-device-ip-address:81'); // ปรับเป็น IP ของอุปกรณ์คุณ
+        const statusText = document.getElementById('status-text');
 
         let loopCountConfirmed = false;
         let loopIntervalConfirmed = false;
+        let isRunning = false;
+        let intervalID;
 
-        // ตรวจสอบเฉพาะค่าตัวเลข
-        function validateNumber(input) {
-            if (!/^\d+$/.test(input.value)) {
-                alert("กรุณากรอกเฉพาะตัวเลขเท่านั้น");
-                input.value = ""; // ล้างค่าที่ไม่ใช่ตัวเลข
+        function validateInput(input) {
+            const value = input.value.trim();
+            if (isNaN(value) || value === '') {
+                alert('กรุณากรอกเป็นตัวเลขเท่านั้น');
+                input.value = '';
+                return false;
             }
+            return true;
         }
-
-        loopCountInput.addEventListener('input', () => validateNumber(loopCountInput));
-        loopIntervalInput.addEventListener('input', () => validateNumber(loopIntervalInput));
-
-        confirmLoopCountButton.addEventListener('click', () => {
-            loopCountConfirmed = !loopCountConfirmed;
-            confirmLoopCountButton.textContent = loopCountConfirmed ? 'ยกเลิก' : 'ยืนยัน';
-            loopCountInput.disabled = loopCountConfirmed;
-            toggleStartButton();
-        });
-
-        confirmLoopIntervalButton.addEventListener('click', () => {
-            loopIntervalConfirmed = !loopIntervalConfirmed;
-            confirmLoopIntervalButton.textContent = loopIntervalConfirmed ? 'ยกเลิก' : 'ยืนยัน';
-            loopIntervalInput.disabled = loopIntervalConfirmed;
-            toggleStartButton();
-        });
 
         function toggleStartButton() {
             startButton.disabled = !(loopCountConfirmed && loopIntervalConfirmed);
         }
 
-        startButton.addEventListener('click', () => {
-            const loopCount = parseInt(loopCountInput.value);
-            const loopInterval = parseInt(loopIntervalInput.value);
-
-            if (isNaN(loopCount) || isNaN(loopInterval)) {
-                alert('กรุณากรอกข้อมูลให้ครบและเป็นตัวเลขเท่านั้น');
-                return;
+        confirmLoopCountButton.addEventListener('click', () => {
+            if (loopCountConfirmed) {
+                loopCountConfirmed = false;
+                confirmLoopCountButton.textContent = 'ยืนยัน';
+                loopCountInput.removeAttribute('disabled');
+            } else {
+                if (validateInput(loopCountInput)) {
+                    loopCountConfirmed = true;
+                    confirmLoopCountButton.textContent = 'ยกเลิก';
+                    loopCountInput.setAttribute('disabled', 'disabled');
+                }
             }
-
-            // ส่งค่า loopCount และ loopInterval ผ่าน WebSocket
-            ws.send(JSON.stringify({
-                type: "start",
-                loopCount: loopCount,
-                loopInterval: loopInterval
-            }));
+            toggleStartButton();
         });
+
+        confirmLoopIntervalButton.addEventListener('click', () => {
+            if (loopIntervalConfirmed) {
+                loopIntervalConfirmed = false;
+                confirmLoopIntervalButton.textContent = 'ยืนยัน';
+                loopIntervalInput.removeAttribute('disabled');
+            } else {
+                if (validateInput(loopIntervalInput)) {
+                    loopIntervalConfirmed = true;
+                    confirmLoopIntervalButton.textContent = 'ยกเลิก';
+                    loopIntervalInput.setAttribute('disabled', 'disabled');
+                }
+            }
+            toggleStartButton();
+        });
+
+        startButton.addEventListener('click', () => {
+            if (isRunning) {
+                stopProcess();
+            } else {
+                startProcess();
+            }
+        });
+
+        function startProcess() {
+            const loopCount = parseInt(loopCountInput.value);
+            const loopInterval = parseInt(loopIntervalInput.value) * 1000;
+            let remainingLoops = loopCount;
+            const totalDuration = loopCount * loopInterval / 1000;
+            const minutes = Math.floor(totalDuration / 60);
+            const seconds = totalDuration % 60;
+
+            isRunning = true;
+            startButton.textContent = 'ยกเลิกการทำงาน';
+            startButton.style.backgroundColor = '#A9A9A9';
+            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${remainingLoops}/${loopCount} รอบ (${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')})`;
+
+            intervalID = setInterval(() => {
+                remainingLoops--;
+
+                if (remainingLoops <= 0) {
+                    stopProcess();
+                    alert('การทำงานเสร็จสิ้น');
+                } else {
+                    const remainingTime = remainingLoops * loopInterval / 1000;
+                    const mins = Math.floor(remainingTime / 60);
+                    const secs = remainingTime % 60;
+                    statusText.textContent = `กำลังทำงาน: ${remainingLoops}/${loopCount} รอบ (${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')})`;
+                }
+            }, loopInterval);
+        }
+
+        function stopProcess() {
+            isRunning = false;
+            clearInterval(intervalID);
+            startButton.textContent = 'เริ่มการทำงาน';
+            startButton.style.backgroundColor = '#FF69B4';
+            statusText.textContent = 'การทำงานถูกยกเลิก';
+        }
     </script>
 </body>
 </html>
