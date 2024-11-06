@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>โปรแกรม reset อุปกรณ์</title>
+    <title>โปรแกรมควบคุม Arduino</title>
     <style>
         /* Mobile-Friendly Styling */
         body, html {
@@ -15,7 +15,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-image: url('https://images.unsplash.com/photo-1506784983877-45594efa4cbe'); /* example background */
+            background-image: url('https://images.unsplash.com/photo-1506784983877-45594efa4cbe');
             background-size: cover;
             background-position: center;
             color: white;
@@ -37,7 +37,10 @@
         }
 
         .form-group {
+            display: flex;
+            align-items: center;
             margin-bottom: 15px;
+            gap: 10px; /* Added padding between input and button */
         }
 
         label {
@@ -47,12 +50,11 @@
         }
 
         input[type="text"] {
-            width: calc(100% - 80px);
+            flex: 1;
             padding: 10px;
             border-radius: 5px;
             border: none;
             outline: none;
-            margin-right: 5px;
             font-size: 1rem;
         }
 
@@ -71,7 +73,7 @@
             background-color: #FF1493;
         }
         
-        .main-button {
+        .start-button {
             margin-top: 20px;
             width: 100%;
         }
@@ -79,91 +81,47 @@
 </head>
 <body>
     <div class="container">
-        <h1>โปรแกรม reset อุปกรณ์</h1>
+        <h1>โปรแกรมควบคุม Arduino</h1>
 
         <div class="form-group">
-            <label for="loop-count">กำหนดจำนวนรอบ</label>
             <input type="text" id="loop-count" placeholder="ระบุจำนวนรอบ..">
+            <button id="confirm-loop-count">ยืนยัน</button>
         </div>
 
         <div class="form-group">
-            <label for="loop-interval">กำหนดเวลาต่อรอบ (วินาที)</label>
             <input type="text" id="loop-interval" placeholder="ระบุเวลาต่อรอบ..">
+            <button id="confirm-loop-interval">ยืนยัน</button>
         </div>
 
-        <div class="form-group">
-            <button class="main-button">การแจ้งเตือน</button>
-        </div>
+        <button id="start-button" class="start-button" disabled>เริ่มการทำงาน</button>
     </div>
 
     <script>
-        // WebSocket connection
-        const ws = new WebSocket('ws://your-device-ip-address:81'); // Replace with your device IP and port 81
-
-        // Elements
         const loopCountInput = document.getElementById('loop-count');
         const loopIntervalInput = document.getElementById('loop-interval');
-        const relayButton = document.querySelector('.main-button');
-        let notificationsEnabled = false; // Flag for notifications
-
-        // WebSocket Events
-        ws.onopen = () => {
-            console.log('WebSocket connected');
-        };
-
-        ws.onmessage = (event) => {
-            if (notificationsEnabled) {
-                alert(event.data); // Show notifications if enabled
-            }
-        };
-
-        ws.onclose = () => {
-            console.log('WebSocket disconnected');
-        };
-
-        // Validation for numeric input
-        function validateInput(input) {
-            return /^\d+$/.test(input); // Only numbers
-        }
-
-        // Send command via WebSocket
-        function sendCommand(command) {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(command);
-            } else {
-                alert('WebSocket is not connected');
-            }
-        }
-
-        // Toggle relay on/off
-        let relayState = false;
-        relayButton.addEventListener('click', () => {
-            const loopCount = loopCountInput.value;
-            const loopInterval = loopIntervalInput.value;
-
-            if (!loopCount || !loopInterval) {
-                alert('กรุณากรอกข้อมูลให้ครบ');
+        const startButton = document.getElementById('start-button');
+        const ws = new WebSocket('ws://your-device-ip-address:81'); // ปรับเป็น IP ของอุปกรณ์คุณ
+    
+        let loopCountConfirmed = false;
+        let loopIntervalConfirmed = false;
+    
+        startButton.addEventListener('click', () => {
+            const loopCount = parseInt(loopCountInput.value);
+            const loopInterval = parseInt(loopIntervalInput.value);
+    
+            if (isNaN(loopCount) || isNaN(loopInterval)) {
+                alert('กรุณากรอกข้อมูลให้ครบและเป็นตัวเลขเท่านั้น');
                 return;
             }
-
-            if (!validateInput(loopCount) || !validateInput(loopInterval)) {
-                alert('กรุณากรอกเฉพาะตัวเลขเท่านั้น');
-                return;
-            }
-
-            relayState = !relayState;
-            relayButton.textContent = relayState ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน';
-
-            // Send relay on/off command
-            sendCommand(relayState ? 'ON' : 'OFF');
-        });
-
-        // Notifications toggle
-        document.querySelector('.main-button').addEventListener('click', () => {
-            notificationsEnabled = !notificationsEnabled;
-            relayButton.textContent = notificationsEnabled ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน';
-            alert(`การแจ้งเตือนถูก${notificationsEnabled ? 'เปิด' : 'ปิด'}`);
+    
+            // ส่งค่า loopCount และ loopInterval ผ่าน WebSocket
+            ws.send(JSON.stringify({
+                type: "start",
+                loopCount: loopCount,
+                loopInterval: loopInterval
+            }));
         });
     </script>
+    
 </body>
 </html>
