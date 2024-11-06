@@ -3,70 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ควบคุมรีเลย์</title>
-    <link rel="stylesheet" href="style.css"> <!-- เชื่อมต่อ style.css -->
+    <title>โปรแกรม reset อุปกรณ์</title>
+    <style>
+        /* Mobile-Friendly Styling */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: url('https://images.unsplash.com/photo-1506784983877-45594efa4cbe'); /* example background */
+            background-size: cover;
+            background-position: center;
+            color: white;
+        }
+
+        .container {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #FFD700;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 80px);
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+            margin-right: 5px;
+            font-size: 1rem;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #FF69B4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #FF1493;
+        }
+        
+        .main-button {
+            margin-top: 20px;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
-<section class="reset-device-container">
-    <div class="reset-device-wrapper">
-        <div class="content-wrapper">
-            <h1 class="main-title">โปรแกรมควบคุมรีเลย์</h1>
-            <h2 class="section-title">กำหนดจำนวนรอบ</h2>
-            <form class="input-group" id="roundForm">
-                <label for="roundInput" class="visually-hidden">ระบุจำนวนรอบ</label>
-                <input type="text" id="roundInput" class="input-field" placeholder="ระบุจำนวนรอบ.." aria-label="ระบุจำนวนรอบ" />
-                <button type="submit" class="confirm-button">ยืนยัน</button>
-            </form>
-            <h2 class="section-title">กำหนดเวลาต่อรอบ (วินาที)</h2>
-            <form class="input-group" id="timeForm">
-                <label for="timeInput" class="visually-hidden">ระบุเวลาต่อรอบ</label>
-                <input type="text" id="timeInput" class="input-field" placeholder="ระบุเวลาต่อรอบ.." aria-label="ระบุเวลาต่อรอบ" />
-                <button type="submit" class="confirm-button">ยืนยัน</button>
-            </form>
-            <h3 class="notification-title">การแจ้งเตือน</h3>
-            <button class="toggle-button" id="notificationToggle" aria-pressed="true">เปิด</button>
+    <div class="container">
+        <h1>โปรแกรม reset อุปกรณ์</h1>
+
+        <div class="form-group">
+            <label for="loop-count">กำหนดจำนวนรอบ</label>
+            <input type="text" id="loop-count" placeholder="ระบุจำนวนรอบ..">
+        </div>
+
+        <div class="form-group">
+            <label for="loop-interval">กำหนดเวลาต่อรอบ (วินาที)</label>
+            <input type="text" id="loop-interval" placeholder="ระบุเวลาต่อรอบ..">
+        </div>
+
+        <div class="form-group">
+            <button class="main-button">การแจ้งเตือน</button>
         </div>
     </div>
-</section>
 
-<script>
-    const ws = new WebSocket("ws://<arduino_ip_address>:81");
+    <script>
+        // WebSocket connection
+        const ws = new WebSocket('ws://your-device-ip-address:81'); // Replace with your device IP and port 81
 
-    ws.onopen = () => {
-        console.log("Connected to WebSocket");
-    };
+        // Elements
+        const loopCountInput = document.getElementById('loop-count');
+        const loopIntervalInput = document.getElementById('loop-interval');
+        const relayButton = document.querySelector('.main-button');
+        let notificationsEnabled = false; // Flag for notifications
 
-    ws.onmessage = (event) => {
-        console.log(event.data);
-        alert(event.data);
-    };
+        // WebSocket Events
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+        };
 
-    document.getElementById("roundForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const round = document.getElementById("roundInput").value;
-        console.log("จำนวนรอบ: " + round);
-    });
+        ws.onmessage = (event) => {
+            if (notificationsEnabled) {
+                alert(event.data); // Show notifications if enabled
+            }
+        };
 
-    document.getElementById("timeForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const time = document.getElementById("timeInput").value;
-        console.log("เวลาต่อรอบ: " + time);
-    });
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
+        };
 
-    document.getElementById("notificationToggle").addEventListener("click", () => {
-        const toggleButton = document.getElementById("notificationToggle");
-        const pressed = toggleButton.getAttribute("aria-pressed") === "true";
-        toggleButton.setAttribute("aria-pressed", !pressed);
-        toggleButton.textContent = pressed ? "ปิด" : "เปิด";
-    });
+        // Validation for numeric input
+        function validateInput(input) {
+            return /^\d+$/.test(input); // Only numbers
+        }
 
-    function turnOnRelay() {
-        ws.send("ON");
-    }
+        // Send command via WebSocket
+        function sendCommand(command) {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(command);
+            } else {
+                alert('WebSocket is not connected');
+            }
+        }
 
-    function turnOffRelay() {
-        ws.send("OFF");
-    }
-</script>
+        // Toggle relay on/off
+        let relayState = false;
+        relayButton.addEventListener('click', () => {
+            const loopCount = loopCountInput.value;
+            const loopInterval = loopIntervalInput.value;
+
+            if (!loopCount || !loopInterval) {
+                alert('กรุณากรอกข้อมูลให้ครบ');
+                return;
+            }
+
+            if (!validateInput(loopCount) || !validateInput(loopInterval)) {
+                alert('กรุณากรอกเฉพาะตัวเลขเท่านั้น');
+                return;
+            }
+
+            relayState = !relayState;
+            relayButton.textContent = relayState ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน';
+
+            // Send relay on/off command
+            sendCommand(relayState ? 'ON' : 'OFF');
+        });
+
+        // Notifications toggle
+        document.querySelector('.main-button').addEventListener('click', () => {
+            notificationsEnabled = !notificationsEnabled;
+            relayButton.textContent = notificationsEnabled ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน';
+            alert(`การแจ้งเตือนถูก${notificationsEnabled ? 'เปิด' : 'ปิด'}`);
+        });
+    </script>
 </body>
 </html>
