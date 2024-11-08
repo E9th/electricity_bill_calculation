@@ -103,18 +103,13 @@
     <script>
         const arduinoIP = "172.20.10.2"; // IP ของ Arduino
         const webSocketPort = 81;        // พอร์ตที่ตั้งค่าไว้ใน Arduino
-        const webSocket = new WebSocket(`ws://${arduinoIP}:${webSocketPort}`)
-        webSocket.onopen = () => {
-            isConnected = true;
-            statusText.textContent = 'สถานะ: เชื่อมต่อแล้ว';
-            toggleStartButton();
-        }
-        webSocket.onclose = () => {
-            isConnected = false;
-            statusText.textContent = 'สถานะ: ไม่เชื่อมต่อ';
-            toggleStartButton();
-        }
-        
+        let webSocket;
+        let isConnected = false;
+        let loopCountConfirmed = false;
+        let loopIntervalConfirmed = false;
+        let isRunning = false;
+        let intervalID;
+
         const loopCountInput = document.getElementById('loop-count');
         const loopIntervalInput = document.getElementById('loop-interval');
         const startButton = document.getElementById('start-button');
@@ -124,11 +119,26 @@
         const confirmLoopIntervalButton = document.getElementById('confirm-loop-interval');
         const statusText = document.getElementById('status-text');
 
-        let loopCountConfirmed = false;
-        let loopIntervalConfirmed = false;
-        let isRunning = false;
-        let intervalID;
-        let isConnected = false;
+        function connectWebSocket() {
+            webSocket = new WebSocket(`ws://${arduinoIP}:${webSocketPort}`);
+            webSocket.onopen = () => {
+                isConnected = true;
+                statusText.textContent = 'สถานะ: เชื่อมต่อแล้ว';
+                toggleStartButton();
+            };
+            webSocket.onclose = () => {
+                isConnected = false;
+                statusText.textContent = 'สถานะ: ไม่เชื่อมต่อ';
+                toggleStartButton();
+                setTimeout(connectWebSocket, 3000); // ลอง reconnect ทุก 3 วินาที
+            };
+            webSocket.onerror = (error) => {
+                console.error("WebSocket Error:", error);
+            };
+        }
+
+        // เริ่มการเชื่อมต่อ WebSocket
+        connectWebSocket();
 
         function validateInput(input) {
             const value = input.value.trim();
@@ -195,32 +205,23 @@
         });
 
         reconnectButton.addEventListener('click', () => {
-            // Simulation of reconnecting
-            isConnected = true;
-            statusText.textContent = 'สถานะ: เชื่อมต่อแล้ว';
-            toggleStartButton();
-            alert('เชื่อมต่อกับ Arduino สำเร็จ');
+            if (!isConnected) {
+                connectWebSocket();
+            } else {
+                alert('เชื่อมต่อกับ Arduino อยู่แล้ว');
+            }
         });
 
         function startProcess() {
             const loopCount = parseInt(loopCountInput.value);
-            const loopInterval = parseInt(loopIntervalInput.value) * 1000;
-            let remainingLoops = loopCount;
-
+            const loopInterval = parseInt(loopIntervalInput.value);
             isRunning = true;
             startButton.textContent = 'ยกเลิกการทำงาน';
-            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${remainingLoops}/${loopCount} รอบ`;
-
-            intervalID = setInterval(() => {
-                remainingLoops--;
-
-                if (remainingLoops <= 0) {
-                    stopProcess();
-                    alert('การทำงานเสร็จสิ้น');
-                } else {
-                    statusText.textContent = `กำลังทำงาน: ${remainingLoops}/${loopCount} รอบ`;
-                }
-            }, loopInterval);
+            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${loopCount} รอบ, ${loopInterval} วินาทีต่อรอบ`;
+            
+            // ส่งคำสั่งเริ่มไปยัง Arduino ผ่าน WebSocket
+            const command = JSON.stringify({ command: "start", loopCount: loopCount, loopInterval: loopInterval });
+            webSocket.send(command);
         }
 
         function stopProcess() {
@@ -228,6 +229,10 @@
             clearInterval(intervalID);
             startButton.textContent = 'เริ่มการทำงาน';
             statusText.textContent = 'การทำงานถูกยกเลิก';
+
+            // ส่งคำสั่งหยุดไปยัง Arduino ผ่าน WebSocket
+            const command = JSON.stringify({ command: "stop" });
+            webSocket.send(command);
         }
     </script>
 </body>
