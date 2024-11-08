@@ -110,6 +110,21 @@
         let isRunning = false;
         let intervalID;
 
+        // WebSocket connection to ESP32
+        const socket = new WebSocket('ws://172.20.10.2:81'); // ใช้ IP ของ ESP32
+
+        socket.onopen = () => {
+            console.log("WebSocket connection established");
+        };
+
+        socket.onerror = (error) => {
+            console.log(`WebSocket error: ${error}`);
+        };
+
+        socket.onmessage = (event) => {
+            console.log("Received message from ESP32: ", event.data);
+        };
+
         function validateInput(input) {
             const value = input.value.trim();
             if (isNaN(value) || value === '') {
@@ -188,6 +203,14 @@
                     statusText.textContent = `กำลังทำงาน: ${remainingLoops}/${loopCount} รอบ (${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')})`;
                 }
             }, loopInterval);
+
+            // ส่งข้อมูลไปยัง ESP32 ผ่าน WebSocket
+            const message = JSON.stringify({
+                command: 'start',
+                loopCount: loopCount,
+                loopInterval: loopInterval / 1000 // เปลี่ยนจากมิลลิวินาทีเป็นวินาที
+            });
+            socket.send(message);
         }
 
         function stopProcess() {
@@ -196,6 +219,10 @@
             startButton.textContent = 'เริ่มการทำงาน';
             startButton.style.backgroundColor = '#FF69B4';
             statusText.textContent = 'การทำงานถูกยกเลิก';
+
+            // ส่งข้อมูลไปยัง ESP32 เพื่อหยุดการทำงาน
+            const stopMessage = JSON.stringify({ command: 'stop' });
+            socket.send(stopMessage);
         }
     </script>
 </body>
