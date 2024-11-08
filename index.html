@@ -98,6 +98,10 @@
     </div>
 
     <script>
+        const arduinoIP = "172.20.10.2"; // IP ของ Arduino
+        const webSocketPort = 81;        // พอร์ตที่ตั้งค่าไว้ใน Arduino
+        const webSocket = new WebSocket(`ws://${arduinoIP}:${webSocketPort}`);
+
         const loopCountInput = document.getElementById('loop-count');
         const loopIntervalInput = document.getElementById('loop-interval');
         const startButton = document.getElementById('start-button');
@@ -110,21 +114,27 @@
         let isRunning = false;
         let intervalID;
 
-        // WebSocket connection to ESP32
-        const socket = new WebSocket('ws://172.20.10.2:81'); // ใช้ IP ของ ESP32
-
-        socket.onopen = () => {
-            console.log("WebSocket connection established");
+        webSocket.onopen = () => {
+            console.log("WebSocket connected.");
+            statusText.textContent = "เชื่อมต่อกับ Arduino แล้ว";
         };
 
-        socket.onerror = (error) => {
-            console.log(`WebSocket error: ${error}`);
+        webSocket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.status === "running") {
+                const remainingLoops = data.remainingLoops;
+                const timeLeft = data.timeLeft;
+                statusText.textContent = `กำลังทำงาน: เหลืออีก ${remainingLoops} รอบ (${timeLeft} วินาที)`;
+            } else if (data.status === "stopped") {
+                statusText.textContent = "การทำงานถูกยกเลิก";
+            }
         };
 
-        socket.onmessage = (event) => {
-            console.log("Received message from ESP32: ", event.data);
+        webSocket.onclose = () => {
+            console.log("WebSocket disconnected.");
+            statusText.textContent = "การเชื่อมต่อถูกยกเลิก";
         };
-
+        
         function validateInput(input) {
             const value = input.value.trim();
             if (isNaN(value) || value === '') {
@@ -179,50 +189,26 @@
 
         function startProcess() {
             const loopCount = parseInt(loopCountInput.value);
-            const loopInterval = parseInt(loopIntervalInput.value) * 1000;
-            let remainingLoops = loopCount;
-            const totalDuration = loopCount * loopInterval / 1000;
-            const minutes = Math.floor(totalDuration / 60);
-            const seconds = totalDuration % 60;
-
+            const loopInterval = parseInt(loopIntervalInput.value);
             isRunning = true;
             startButton.textContent = 'ยกเลิกการทำงาน';
             startButton.style.backgroundColor = '#A9A9A9';
-            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${remainingLoops}/${loopCount} รอบ (${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')})`;
 
-            intervalID = setInterval(() => {
-                remainingLoops--;
-
-                if (remainingLoops <= 0) {
-                    stopProcess();
-                    alert('การทำงานเสร็จสิ้น');
-                } else {
-                    const remainingTime = remainingLoops * loopInterval / 1000;
-                    const mins = Math.floor(remainingTime / 60);
-                    const secs = remainingTime % 60;
-                    statusText.textContent = `กำลังทำงาน: ${remainingLoops}/${loopCount} รอบ (${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')})`;
-                }
-            }, loopInterval);
-
-            // ส่งข้อมูลไปยัง ESP32 ผ่าน WebSocket
-            const message = JSON.stringify({
-                command: 'start',
+            webSocket.send(JSON.stringify({
+                command: "start",
                 loopCount: loopCount,
-                loopInterval: loopInterval / 1000 // เปลี่ยนจากมิลลิวินาทีเป็นวินาที
-            });
-            socket.send(message);
+                loopInterval: loopInterval
+            }));
+
+            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${loopCount} รอบ ทุก ๆ ${loopInterval} วินาที`;
         }
 
         function stopProcess() {
             isRunning = false;
-            clearInterval(intervalID);
             startButton.textContent = 'เริ่มการทำงาน';
             startButton.style.backgroundColor = '#FF69B4';
+            webSocket.send(JSON.stringify({ command: "stop" }));
             statusText.textContent = 'การทำงานถูกยกเลิก';
-
-            // ส่งข้อมูลไปยัง ESP32 เพื่อหยุดการทำงาน
-            const stopMessage = JSON.stringify({ command: 'stop' });
-            socket.send(stopMessage);
         }
     </script>
 </body>
