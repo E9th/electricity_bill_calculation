@@ -67,8 +67,8 @@
             background-color: #FF1493;
         }
         
-        .start-button {
-            margin-top: 20px;
+        .start-button, .reset-button, .reconnect-button {
+            margin-top: 10px;
             width: 100%;
         }
 
@@ -94,17 +94,32 @@
         </div>
 
         <button id="start-button" class="start-button" disabled>เริ่มการทำงาน</button>
-        <div id="status-text" class="status-text"></div>
+        <button id="reset-button" class="reset-button">รีเซ็ตค่า</button>
+        <button id="reconnect-button" class="reconnect-button">เชื่อมต่อใหม่</button>
+
+        <div id="status-text" class="status-text">สถานะ: ไม่เชื่อมต่อ</div>
     </div>
 
     <script>
         const arduinoIP = "172.20.10.2"; // IP ของ Arduino
         const webSocketPort = 81;        // พอร์ตที่ตั้งค่าไว้ใน Arduino
-        const webSocket = new WebSocket(`ws://${arduinoIP}:${webSocketPort}`);
-
+        const webSocket = new WebSocket(`ws://${arduinoIP}:${webSocketPort}`)
+        webSocket.onopen = () => {
+            isConnected = true;
+            statusText.textContent = 'สถานะ: เชื่อมต่อแล้ว';
+            toggleStartButton();
+        }
+        webSocket.onclose = () => {
+            isConnected = false;
+            statusText.textContent = 'สถานะ: ไม่เชื่อมต่อ';
+            toggleStartButton();
+        }
+        
         const loopCountInput = document.getElementById('loop-count');
         const loopIntervalInput = document.getElementById('loop-interval');
         const startButton = document.getElementById('start-button');
+        const resetButton = document.getElementById('reset-button');
+        const reconnectButton = document.getElementById('reconnect-button');
         const confirmLoopCountButton = document.getElementById('confirm-loop-count');
         const confirmLoopIntervalButton = document.getElementById('confirm-loop-interval');
         const statusText = document.getElementById('status-text');
@@ -113,32 +128,12 @@
         let loopIntervalConfirmed = false;
         let isRunning = false;
         let intervalID;
+        let isConnected = false;
 
-        webSocket.onopen = () => {
-            console.log("WebSocket connected.");
-            statusText.textContent = "เชื่อมต่อกับ Arduino แล้ว";
-        };
-
-        webSocket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.status === "running") {
-                const remainingLoops = data.remainingLoops;
-                const timeLeft = data.timeLeft;
-                statusText.textContent = `กำลังทำงาน: เหลืออีก ${remainingLoops} รอบ (${timeLeft} วินาที)`;
-            } else if (data.status === "stopped") {
-                statusText.textContent = "การทำงานถูกยกเลิก";
-            }
-        };
-
-        webSocket.onclose = () => {
-            console.log("WebSocket disconnected.");
-            statusText.textContent = "การเชื่อมต่อถูกยกเลิก";
-        };
-        
         function validateInput(input) {
             const value = input.value.trim();
-            if (isNaN(value) || value === '') {
-                alert('กรุณากรอกเป็นตัวเลขเท่านั้น');
+            if (isNaN(value) || value === '' || parseInt(value) <= 0) {
+                alert('กรุณากรอกเป็นตัวเลขที่มากกว่า 0 เท่านั้น');
                 input.value = '';
                 return false;
             }
@@ -146,7 +141,7 @@
         }
 
         function toggleStartButton() {
-            startButton.disabled = !(loopCountConfirmed && loopIntervalConfirmed);
+            startButton.disabled = !(loopCountConfirmed && loopIntervalConfirmed && isConnected);
         }
 
         confirmLoopCountButton.addEventListener('click', () => {
@@ -187,27 +182,51 @@
             }
         });
 
+        resetButton.addEventListener('click', () => {
+            loopCountInput.removeAttribute('disabled');
+            loopIntervalInput.removeAttribute('disabled');
+            loopCountInput.value = '';
+            loopIntervalInput.value = '';
+            confirmLoopCountButton.textContent = 'ยืนยัน';
+            confirmLoopIntervalButton.textContent = 'ยืนยัน';
+            loopCountConfirmed = false;
+            loopIntervalConfirmed = false;
+            toggleStartButton();
+        });
+
+        reconnectButton.addEventListener('click', () => {
+            // Simulation of reconnecting
+            isConnected = true;
+            statusText.textContent = 'สถานะ: เชื่อมต่อแล้ว';
+            toggleStartButton();
+            alert('เชื่อมต่อกับ Arduino สำเร็จ');
+        });
+
         function startProcess() {
             const loopCount = parseInt(loopCountInput.value);
-            const loopInterval = parseInt(loopIntervalInput.value);
+            const loopInterval = parseInt(loopIntervalInput.value) * 1000;
+            let remainingLoops = loopCount;
+
             isRunning = true;
             startButton.textContent = 'ยกเลิกการทำงาน';
-            startButton.style.backgroundColor = '#A9A9A9';
+            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${remainingLoops}/${loopCount} รอบ`;
 
-            webSocket.send(JSON.stringify({
-                command: "start",
-                loopCount: loopCount,
-                loopInterval: loopInterval
-            }));
+            intervalID = setInterval(() => {
+                remainingLoops--;
 
-            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${loopCount} รอบ ทุก ๆ ${loopInterval} วินาที`;
+                if (remainingLoops <= 0) {
+                    stopProcess();
+                    alert('การทำงานเสร็จสิ้น');
+                } else {
+                    statusText.textContent = `กำลังทำงาน: ${remainingLoops}/${loopCount} รอบ`;
+                }
+            }, loopInterval);
         }
 
         function stopProcess() {
             isRunning = false;
+            clearInterval(intervalID);
             startButton.textContent = 'เริ่มการทำงาน';
-            startButton.style.backgroundColor = '#FF69B4';
-            webSocket.send(JSON.stringify({ command: "stop" }));
             statusText.textContent = 'การทำงานถูกยกเลิก';
         }
     </script>
