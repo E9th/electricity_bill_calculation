@@ -3,237 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>โปรแกรมควบคุม Arduino</title>
+    <title>โปรแกรมคำนวณค่าไฟ</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
     <style>
-        /* Mobile-Friendly Styling */
-        body, html {
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;500;700&display=swap');
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background: linear-gradient(to bottom right, #e6f2ff, #ffffff);
             margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            text-align: center;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-image: url('https://images.unsplash.com/photo-1506784983877-45594efa4cbe');
-            background-size: cover;
-            background-position: center;
+            overflow-y: hidden;
+        }
+
+        .calculator {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            width: 360px;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .calculator h1 {
+            color: #0066cc;
+            font-weight: 700;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+
+        .calculator button {
+            margin: 10px 0;
+            padding: 10px 16px;
+            border-radius: 8px;
+            background-color: #0066cc;
             color: white;
+            font-weight: bold;
+            transition: 0.3s;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 102, 204, 0.2);
+        }
+
+        .calculator button:hover {
+            background-color: #004080;
+        }
+
+        #expert-mode {
+            background-color: #f8faff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid #d0e3ff;
+            text-align: left;
+        }
+
+        #expert-mode h3 {
+            color: #004080;
+            font-weight: 500;
+            margin: 0 0 10px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .device-card {
+            background-color: #f1f9ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            position: relative;
+            border: 1px solid #cce0ff;
+        }
+
+        .device-card h2 {
+            color: #004080;
+            font-weight: 500;
+            font-size: 1.1em;
+            margin: 0 0 10px;
+        }
+
+        .remove-device {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: #ff5252;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 8px;
+            border: 1px solid #b0bec5;
+            font-size: 1em;
+            font-weight: 300;
+            box-sizing: border-box;
+        }
+
+        #result, #best-value {
+            margin-top: 15px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 8px;
+            color: #1b5e20;
+        }
+
+        #best-value {
+            color: #d84315;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #777;
         }
 
         .container {
-            background: rgba(0, 0, 0, 0.6);
-            padding: 20px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            color: #FFD700;
-        }
-
-        .form-group {
             display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            gap: 10px;
+            flex-direction: column;
+            gap: 16px;
         }
 
-        input[type="text"] {
-            flex: 1;
-            padding: 10px;
-            border-radius: 5px;
-            border: none;
-            outline: none;
-            font-size: 1rem;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 1rem;
-            background-color: #FF69B4;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #FF1493;
-        }
-        
-        .start-button, .reset-button, .reconnect-button {
-            margin-top: 10px;
-            width: 100%;
-        }
-
-        .status-text {
-            margin-top: 15px;
-            font-size: 1rem;
-            color: #FFD700;
+        @media (max-width: 600px) {
+            .calculator {
+                width: 90%;
+                max-height: 90vh;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>โปรแกรมควบคุม Arduino</h1>
+    <div class="calculator">
+        <h1>โปรแกรมคำนวณค่าไฟ ⚡</h1>
 
-        <div class="form-group">
-            <input type="text" id="loop-count" placeholder="ระบุจำนวนรอบ..">
-            <button id="confirm-loop-count">ยืนยัน</button>
+        <button onclick="toggleMode()">สลับโหมดผู้เชี่ยวชาญ</button>
+
+        <div id="expert-mode" style="display: none;">
+            <h3>โหมดผู้เชี่ยวชาญ</h3>
+            <label>อัตราค่าไฟฟ้าก้าวหน้า (บาท/หน่วย)</label>
+            <input type="number" id="ratePerUnitAdvanced" value="4" oninput="calculateBill()" placeholder="อัตราค่าไฟฟ้าก้าวหน้า">
+            <label>ค่า Ft (บาท/หน่วย)</label>
+            <input type="number" id="ftRate" value="0" oninput="calculateBill()" placeholder="ค่า Ft">
         </div>
 
-        <div class="form-group">
-            <input type="text" id="loop-interval" placeholder="ระบุเวลาต่อรอบ..">
-            <button id="confirm-loop-interval">ยืนยัน</button>
+        <div id="device-container">
+            <div class="device-card">
+                <h2>เครื่องใช้ไฟฟ้า 1</h2>
+                <button class="remove-device" onclick="removeDevice(this)">x</button>
+                <select>
+                    <option value="">ระบุเครื่องใช้ไฟฟ้า</option>
+                    <option value="aircon">เครื่องปรับอากาศ</option>
+                    <option value="fan">พัดลม</option>
+                    <option value="light">หลอดไฟ</option>
+                    <option value="fridge">ตู้เย็น</option>
+                    <option value="tv">ทีวี</option>
+                    <option value="microwave">ไมโครเวฟ</option>
+                    <option value="water-heater">เครื่องทำน้ำอุ่น</option>
+                    <option value="washing-machine">เครื่องซักผ้า</option>
+                    <option value="computer">คอมพิวเตอร์</option>
+                    <option value="phone-charger">ที่ชาร์จโทรศัพท์</option>
+                    <option value="rice-cooker">หม้อหุงข้าว</option>
+                    <option value="electric-kettle">กาต้มน้ำไฟฟ้า</option>
+                    <option value="vacuum-cleaner">เครื่องดูดฝุ่น</option>
+                    <option value="iron">เตารีด</option>
+                    <option value="blender">เครื่องปั่น</option>
+                    <option value="oven">เตาอบ</option>
+                    <option value="water-purifier">เครื่องกรองน้ำ</option>
+                    <option value="electric-fan">พัดลมไฟฟ้า</option>
+                    <option value="router">เราเตอร์</option>
+                    <option value="dehumidifier">เครื่องลดความชื้น</option>
+                    <option value="humidifier">เครื่องเพิ่มความชื้น</option>
+                    <option value="heater">เครื่องทำความร้อน</option>
+                    <option value="dishwasher">เครื่องล้างจาน</option>
+                    <option value="sewing-machine">จักรเย็บผ้า</option>
+                    <option value="sound-system">ระบบเสียง</option>
+                </select>
+                <input type="number" min="0" placeholder="กำลังไฟฟ้า (วัตต์)" oninput="calculateBill()">
+                <input type="number" min="0" placeholder="ชั่วโมงการใช้งานต่อวัน" oninput="calculateBill()">
+                <input type="number" min="0" placeholder="จำนวนวัน" oninput="calculateBill()">
+            </div>
         </div>
 
-        <button id="start-button" class="start-button" disabled>เริ่มการทำงาน</button>
-        <button id="reset-button" class="reset-button">รีเซ็ตค่า</button>
-        <button id="reconnect-button" class="reconnect-button">เชื่อมต่อใหม่</button>
+        <button onclick="addDevice()">เพิ่มอุปกรณ์</button>
+        <button onclick="calculateBill()">คำนวณ</button>
 
-        <div id="status-text" class="status-text">สถานะ: ไม่เชื่อมต่อ</div>
+        <p id="result"></p>
+        <p id="best-value"></p>
+
+        <footer>ลิขสิทธิ์ © 2024 Thanapon.do</footer>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
     <script>
-        const arduinoIP = "172.20.10.2"; // IP ของ Arduino
-        const webSocketPort = 81;        // พอร์ตที่ตั้งค่าไว้ใน Arduino
-        let webSocket;
-        let isConnected = false;
-        let loopCountConfirmed = false;
-        let loopIntervalConfirmed = false;
-        let isRunning = false;
-        let intervalID;
+        const ratePerUnit = 4;
 
-        const loopCountInput = document.getElementById('loop-count');
-        const loopIntervalInput = document.getElementById('loop-interval');
-        const startButton = document.getElementById('start-button');
-        const resetButton = document.getElementById('reset-button');
-        const reconnectButton = document.getElementById('reconnect-button');
-        const confirmLoopCountButton = document.getElementById('confirm-loop-count');
-        const confirmLoopIntervalButton = document.getElementById('confirm-loop-interval');
-        const statusText = document.getElementById('status-text');
-
-        function connectWebSocket() {
-            webSocket = new WebSocket(`ws://${arduinoIP}:${webSocketPort}`);
-            webSocket.onopen = () => {
-                isConnected = true;
-                statusText.textContent = 'สถานะ: เชื่อมต่อแล้ว';
-                toggleStartButton();
-            };
-            webSocket.onclose = () => {
-                isConnected = false;
-                statusText.textContent = 'สถานะ: ไม่เชื่อมต่อ';
-                toggleStartButton();
-                setTimeout(connectWebSocket, 3000); // ลอง reconnect ทุก 3 วินาที
-            };
-            webSocket.onerror = (error) => {
-                console.error("WebSocket Error:", error);
-            };
+        function addDevice() {
+            const deviceContainer = document.getElementById("device-container");
+            const deviceCount = deviceContainer.getElementsByClassName("device-card").length + 1;
+            const newCard = document.createElement("div");
+            newCard.className = "device-card";
+            newCard.innerHTML = `
+                <h2>เครื่องใช้ไฟฟ้า ${deviceCount}</h2>
+                <select>
+                    <option value="">
+                    <option value="">ระบุเครื่องใช้ไฟฟ้า</option>
+                    <option value="aircon">เครื่องปรับอากาศ</option>
+                    <option value="fan">พัดลม</option>
+                    <option value="light">หลอดไฟ</option>
+                    <option value="fridge">ตู้เย็น</option>
+                    <option value="tv">ทีวี</option>
+                    <option value="microwave">ไมโครเวฟ</option>
+                    <option value="water-heater">เครื่องทำน้ำอุ่น</option>
+                    <option value="washing-machine">เครื่องซักผ้า</option>
+                    <option value="computer">คอมพิวเตอร์</option>
+                    <option value="phone-charger">ที่ชาร์จโทรศัพท์</option>
+                    <option value="rice-cooker">หม้อหุงข้าว</option>
+                    <option value="electric-kettle">กาต้มน้ำไฟฟ้า</option>
+                    <option value="vacuum-cleaner">เครื่องดูดฝุ่น</option>
+                    <option value="iron">เตารีด</option>
+                    <option value="blender">เครื่องปั่น</option>
+                    <option value="oven">เตาอบ</option>
+                    <option value="water-purifier">เครื่องกรองน้ำ</option>
+                    <option value="electric-fan">พัดลมไฟฟ้า</option>
+                    <option value="router">เราเตอร์</option>
+                    <option value="dehumidifier">เครื่องลดความชื้น</option>
+                    <option value="humidifier">เครื่องเพิ่มความชื้น</option>
+                    <option value="heater">เครื่องทำความร้อน</option>
+                    <option value="dishwasher">เครื่องล้างจาน</option>
+                    <option value="sewing-machine">จักรเย็บผ้า</option>
+                    <option value="sound-system">ระบบเสียง</option>
+                </select>
+                <input type="number" min="0" placeholder="กำลังไฟฟ้า (วัตต์)" oninput="calculateBill()">
+                <input type="number" min="0" placeholder="ชั่วโมงการใช้งานต่อวัน" oninput="calculateBill()">
+                <input type="number" min="0" placeholder="จำนวนวัน" oninput="calculateBill()">
+                <button class="remove-device" onclick="removeDevice(this)">×</button>
+            `;
+            deviceContainer.appendChild(newCard);
+            $(".device-card select").select2();
         }
 
-        // เริ่มการเชื่อมต่อ WebSocket
-        connectWebSocket();
-
-        function validateInput(input) {
-            const value = input.value.trim();
-            if (isNaN(value) || value === '' || parseInt(value) <= 0) {
-                alert('กรุณากรอกเป็นตัวเลขที่มากกว่า 0 เท่านั้น');
-                input.value = '';
-                return false;
-            }
-            return true;
+        function removeDevice(button) {
+            button.parentElement.remove();
+            calculateBill();
         }
 
-        function toggleStartButton() {
-            startButton.disabled = !(loopCountConfirmed && loopIntervalConfirmed && isConnected);
-        }
+        function calculateBill() {
+            const devices = document.querySelectorAll('.device-card');
+            let totalUsage = 0;
 
-        confirmLoopCountButton.addEventListener('click', () => {
-            if (loopCountConfirmed) {
-                loopCountConfirmed = false;
-                confirmLoopCountButton.textContent = 'ยืนยัน';
-                loopCountInput.removeAttribute('disabled');
-            } else {
-                if (validateInput(loopCountInput)) {
-                    loopCountConfirmed = true;
-                    confirmLoopCountButton.textContent = 'ยกเลิก';
-                    loopCountInput.setAttribute('disabled', 'disabled');
+            devices.forEach(device => {
+                const power = device.querySelector('input[type="number"]:nth-of-type(1)').value;
+                const hours = device.querySelector('input[type="number"]:nth-of-type(2)').value;
+                const days = device.querySelector('input[type="number"]:nth-of-type(3)').value;
+
+                if (power && hours && days) {
+                    totalUsage += (power / 1000) * hours * days; // Convert watts to kWh
                 }
-            }
-            toggleStartButton();
-        });
+            });
 
-        confirmLoopIntervalButton.addEventListener('click', () => {
-            if (loopIntervalConfirmed) {
-                loopIntervalConfirmed = false;
-                confirmLoopIntervalButton.textContent = 'ยืนยัน';
-                loopIntervalInput.removeAttribute('disabled');
-            } else {
-                if (validateInput(loopIntervalInput)) {
-                    loopIntervalConfirmed = true;
-                    confirmLoopIntervalButton.textContent = 'ยกเลิก';
-                    loopIntervalInput.setAttribute('disabled', 'disabled');
-                }
-            }
-            toggleStartButton();
-        });
+            const rate = document.getElementById("ratePerUnitAdvanced") ? document.getElementById("ratePerUnitAdvanced").value : ratePerUnit;
+            const ft = document.getElementById("ftRate") ? document.getElementById("ftRate").value : 0;
+            const totalCost = totalUsage * (rate + parseFloat(ft));
 
-        startButton.addEventListener('click', () => {
-            if (isRunning) {
-                stopProcess();
-            } else {
-                startProcess();
-            }
-        });
-
-        resetButton.addEventListener('click', () => {
-            loopCountInput.removeAttribute('disabled');
-            loopIntervalInput.removeAttribute('disabled');
-            loopCountInput.value = '';
-            loopIntervalInput.value = '';
-            confirmLoopCountButton.textContent = 'ยืนยัน';
-            confirmLoopIntervalButton.textContent = 'ยืนยัน';
-            loopCountConfirmed = false;
-            loopIntervalConfirmed = false;
-            toggleStartButton();
-        });
-
-        reconnectButton.addEventListener('click', () => {
-            if (!isConnected) {
-                connectWebSocket();
-            } else {
-                alert('เชื่อมต่อกับ Arduino อยู่แล้ว');
-            }
-        });
-
-        function startProcess() {
-            const loopCount = parseInt(loopCountInput.value);
-            const loopInterval = parseInt(loopIntervalInput.value);
-            isRunning = true;
-            startButton.textContent = 'ยกเลิกการทำงาน';
-            statusText.textContent = `โปรแกรมกำลังเริ่มทำงาน: ${loopCount} รอบ, ${loopInterval} วินาทีต่อรอบ`;
-            
-            // ส่งคำสั่งเริ่มไปยัง Arduino ผ่าน WebSocket
-            const command = JSON.stringify({ command: "start", loopCount: loopCount, loopInterval: loopInterval });
-            webSocket.send(command);
+            const bestValue = totalUsage < 1 ? "ค่าไฟต่ำที่สุด!" : "ค่าไฟปกติ";
+            document.getElementById("result").innerText = `รวมการใช้ไฟฟ้า: ${totalUsage.toFixed(2)} kWh\nค่าไฟรวม: ฿${totalCost.toFixed(2)}`;
+            document.getElementById("best-value").innerText = bestValue;
         }
 
-        function stopProcess() {
-            isRunning = false;
-            clearInterval(intervalID);
-            startButton.textContent = 'เริ่มการทำงาน';
-            statusText.textContent = 'การทำงานถูกยกเลิก';
-
-            // ส่งคำสั่งหยุดไปยัง Arduino ผ่าน WebSocket
-            const command = JSON.stringify({ command: "stop" });
-            webSocket.send(command);
+        function toggleMode() {
+            const expertMode = document.getElementById("expert-mode");
+            expertMode.style.display = expertMode.style.display === "none" ? "block" : "none";
         }
+
+        $(".device-card select").select2(); // Initialize Select2 on page load
     </script>
 </body>
 </html>
